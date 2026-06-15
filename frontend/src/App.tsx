@@ -1,13 +1,12 @@
-import { useState } from "react";
+  import { useState } from "react";
+  import "./style.css";
+  function App() {
 
-function App() {
-  return (
-    <>
-      <h2>саня делай чат</h2>
-      <h1>Быстра</h1>
-      <h2>buuut</h2>
-    </>
-  );
-}
+    return (
+      <>
+        <h3>саня делай чат</h3>
+      </>
+    );
+  }
 
 export default App;
