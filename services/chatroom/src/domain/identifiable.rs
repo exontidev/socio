@@ -13,4 +13,11 @@ impl<T: std::fmt::Debug> Identifiable<T> {
             data,
         }
     }
+
+    pub fn new_known(id: impl Into<Uuid>, data: T) -> Self {
+        Self {
+            id: id.into(),
+            data,
+        }
+    }
 }

@@ -1,20 +1,40 @@
 use anyhow::Result;
 
-use crate::domain::room::Room;
+use crate::domain::{
+    identifiable::Identifiable,
+    room::{Room, RoomId},
+};
 use uuid::Uuid;
 
-pub enum RoomQuery {
+pub enum RoomFetchQuery {
     Id(Uuid),
     Name(String),
 }
 
-pub enum RoomsQuery {
+pub enum RoomsFetchQuery {
     Ids(Vec<Uuid>),
     User(Uuid),
+    TopMessages { cursor: u32 },
 }
 
 #[async_trait::async_trait]
 pub trait Rooms {
-    fn get_room(query: RoomQuery) -> Result<Room>;
-    fn get_rooms(query: RoomQuery) -> Result<Room>;
+    async fn add_room(
+        &self,
+        room: Identifiable<Room>,
+    ) -> Result<()>;
+
+    async fn get_room(
+        &self,
+        query: RoomFetchQuery,
+    ) -> Result<Identifiable<Room>>;
+    async fn get_rooms(
+        &self,
+        query: RoomsFetchQuery,
+    ) -> Result<Identifiable<Room>>;
+}
+
+pub enum Error {
+    NotFound,
+    RoomAlreadyExists,
 }
