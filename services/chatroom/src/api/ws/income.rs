@@ -37,7 +37,7 @@ impl ConnectionHandler {
             connections: vec![],
             max_rooms: 5, // in config later
             state,
-            relay_tx: relay_tx,
+            relay_tx,
         }
     }
 
@@ -100,7 +100,6 @@ pub async fn handle_income(
             Message::Text(utf8_bytes) => utf8_bytes.to_string(),
 
             Message::Close(_) => {
-                handler.error(INVALID);
                 continue;
             }
 

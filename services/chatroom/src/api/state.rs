@@ -1,7 +1,8 @@
+use std::net::IpAddr;
+
 use anyhow::anyhow;
-use tokio::{
-    sync::broadcast, sync::mpsc, task::JoinHandle,
-};
+use serde::{Deserialize, Serialize};
+use tokio::{sync::broadcast, sync::mpsc, task::JoinHandle};
 
 use crate::{
     requests::{Request, WebSocketMessage},
@@ -11,7 +12,25 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct AppState {
+    pub config: Config,
     pub rooms: Rooms,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Config {
+    room: RoomConfig,
+    network: NetworkConfig,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NetworkConfig {
+    ip: IpAddr,
+    port: u16,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct RoomConfig {
+    max_rooms: u8,
 }
 
 impl AppState {
@@ -26,8 +45,7 @@ impl AppState {
                 let mut stream = room.subscribe();
 
                 async move {
-                    while let Ok(data) = stream.recv().await
-                    {
+                    while let Ok(data) = stream.recv().await {
                         let _ = user.send(data);
                     }
                 }
