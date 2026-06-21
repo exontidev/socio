@@ -7,14 +7,16 @@ use crate::{
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "snake_case", tag = "type", content = "data")]
 pub enum WebSocketMessage {
     NewMessage(Message),
     NewParticipant(UserId),
 
-    Error(CloseCode),
+    Error(u16),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "type")]
 pub enum Request {
     JoinRoom { room: RoomId },
     LeaveRoom { room: RoomId },
