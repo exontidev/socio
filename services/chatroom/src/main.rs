@@ -1,88 +1,60 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc, time::Duration};
 
-use axum::{
-    Router,
-    extract::{
-        State, WebSocketUpgrade,
-        ws::{Message, WebSocket},
-    },
-    response::IntoResponse,
-    routing::get,
+use axum::{Router, routing::get};
+use chatroom::{
+    api::{state::AppState, ws::websocket_handler},
+    requests::WebSocketMessage,
+    room::{message::Message, room::RoomId, rooms::Rooms},
+    user::user::UserId,
 };
-use futures::{
-    SinkExt, StreamExt,
-    stream::{SplitSink, SplitStream},
-};
-use tokio::{
-    sync::{broadcast, mpsc},
-    task::spawn_blocking,
-};
+use dashmap::DashMap;
+use tokio::{net::TcpListener, sync, time::sleep};
+use uuid::Uuid;
 
 #[tokio::main]
-async fn main() {
-    let (tx, _) = broadcast::channel::<String>(512);
-
-    spawn_blocking({
-        let tx = tx.clone();
-
-        move || loop {
-            let mut buffer = String::new();
-            std::io::stdin().read_line(&mut buffer).unwrap();
-            let _ = tx.send(buffer);
-        }
+async fn main() -> anyhow::Result<()> {
+    let state = Arc::new(AppState {
+        rooms: Rooms {
+            rooms: DashMap::new(),
+        },
     });
 
-    let app = Router::new()
-        .route("/test", get(websocket_handler))
-        .with_state(tx.clone());
+    init_room("butter", state.clone());
+    init_room("obama", state.clone());
+    init_room("lsd", state.clone());
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+    let listener = TcpListener::bind("127.0.0.1:3000")
         .await
-        .unwrap();
+        .expect("Failed to bind");
 
-    axum::serve(listener, app).await.unwrap();
+    let router = Router::new()
+        .route("/ws", get(websocket_handler))
+        .with_state(state);
+
+    axum::serve(listener, router)
+        .await
+        .expect("Failed to serve backend");
+
+    Ok(())
 }
 
-async fn websocket_handler(
-    State(tx): State<broadcast::Sender<String>>,
-    ws: WebSocketUpgrade,
-) -> impl IntoResponse {
-    ws.on_failed_upgrade(|error| println!("Error upgrading websocket: {}", error))
-        .on_upgrade(move |socket| handle_socket(socket, tx))
-}
+fn init_room(name: &'static str, state: Arc<AppState>) {
+    let tx = sync::broadcast::Sender::new(512);
+    let id = Uuid::now_v7();
+    println!("id of room {} is {}", name, id);
 
-async fn handle_socket(socket: WebSocket, global: broadcast::Sender<String>) {
-    let (sender, receiver) = socket.split();
-    let (local_tx, local_rx) = tokio::sync::mpsc::channel::<Message>(512);
+    state.rooms.rooms.insert(RoomId(id), tx.clone());
 
-    tokio::join!(
-        handle_sending(sender, local_rx),
-        handle_global(global.clone(), local_tx.clone()),
-        handle_incoming(receiver, global)
-    );
-}
+    tokio::spawn(async move {
+        loop {
+            let _ = tx.send(WebSocketMessage::NewMessage(
+                Message {
+                    user: UserId(Uuid::now_v7()),
+                    content: format!("i love {}...", name),
+                },
+            ));
 
-async fn handle_global(global: broadcast::Sender<String>, distributor_tx: mpsc::Sender<Message>) {
-    let mut stream = global.subscribe();
-
-    while let Ok(text) = stream.recv().await {
-        let _ = distributor_tx.send(text.into()).await;
-    }
-}
-
-async fn handle_incoming(mut stream: SplitStream<WebSocket>, global: broadcast::Sender<String>) {
-    while let Some(text) = stream.next().await {
-        if let Ok(text) = text {
-            let _ = global.send(text.into_text().unwrap().to_string());
+            sleep(Duration::from_secs(1)).await;
         }
-    }
-}
-
-async fn handle_sending(
-    mut sender: SplitSink<WebSocket, Message>,
-    mut rx: mpsc::Receiver<Message>,
-) {
-    while let Some(data) = rx.recv().await {
-        let _ = sender.send(data).await;
-    }
+    });
 }
