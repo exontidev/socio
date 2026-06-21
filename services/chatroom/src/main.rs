@@ -1,38 +1,60 @@
-use std::collections::HashMap;
+use std::{str::FromStr, sync::Arc, time::Duration};
 
+use axum::{Router, routing::get};
 use chatroom::{
-    application::{
-        mocks::mock_rooms::MockRooms,
-        rooms::{RoomFetchQuery, Rooms},
-    },
-    domain::{identifiable::Identifiable, room::Room},
+    api::{state::AppState, ws::websocket_handler},
+    requests::WebSocketMessage,
+    room::{message::Message, room::RoomId, rooms::Rooms},
+    user::user::UserId,
 };
-use tokio::sync::Mutex;
+use dashmap::DashMap;
+use tokio::{net::TcpListener, sync, time::sleep};
 use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let rooms = MockRooms {
-        rooms: Mutex::new(HashMap::new()),
-    };
+    let state = Arc::new(AppState {
+        rooms: Rooms {
+            rooms: DashMap::new(),
+        },
+    });
 
-    let id = Uuid::now_v7();
+    init_room("butter", state.clone());
+    init_room("obama", state.clone());
+    init_room("lsd", state.clone());
 
-    let _ = rooms
-        .add_room(Identifiable {
-            id,
-            data: Room {
-                title: String::from("general"),
-                description: String::from("data"),
-            },
-        })
-        .await;
+    let listener = TcpListener::bind("127.0.0.1:3000")
+        .await
+        .expect("Failed to bind");
 
-    let room = rooms
-        .get_room(RoomFetchQuery::Name(
-            "general".to_string(),
-        ))
-        .await;
-    dbg!(&room);
+    let router = Router::new()
+        .route("/ws", get(websocket_handler))
+        .with_state(state);
+
+    axum::serve(listener, router)
+        .await
+        .expect("Failed to serve backend");
+
     Ok(())
+}
+
+fn init_room(name: &'static str, state: Arc<AppState>) {
+    let tx = sync::broadcast::Sender::new(512);
+    let id = Uuid::now_v7();
+    println!("id of room {} is {}", name, id);
+
+    state.rooms.rooms.insert(RoomId(id), tx.clone());
+
+    tokio::spawn(async move {
+        loop {
+            let _ = tx.send(WebSocketMessage::NewMessage(
+                Message {
+                    user: UserId(Uuid::now_v7()),
+                    content: format!("i love {}...", name),
+                },
+            ));
+
+            sleep(Duration::from_secs(1)).await;
+        }
+    });
 }
