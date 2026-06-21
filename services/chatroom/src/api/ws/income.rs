@@ -9,29 +9,30 @@ use crate::{
         state::AppState,
         ws::{
             WebSocketReceiver,
-            error::{NOT_A_UTF_8, PARSE_FAILED, ROOM_DOESNT_EXIST},
+            error::{
+                NOT_A_UTF_8, PARSE_FAILED, ROOM_DOESNT_EXIST,
+                ROOM_LIMIT_REACHED,
+            },
         },
     },
+    helper::GlobalState,
     requests::{Request, WebSocketMessage},
     room::room::RoomId,
 };
 
 type Connections = Vec<(RoomId, JoinHandle<()>)>;
-type GlobalState = Arc<AppState>;
+type RelaySender = UnboundedSender<WebSocketMessage>;
 
 pub struct ConnectionHandler {
     pub connections: Connections,
     pub max_rooms: u8,
 
     pub state: GlobalState,
-    pub relay_tx: UnboundedSender<WebSocketMessage>,
+    pub relay_tx: RelaySender,
 }
 
 impl ConnectionHandler {
-    pub fn new(
-        state: GlobalState,
-        relay_tx: UnboundedSender<WebSocketMessage>,
-    ) -> Self {
+    pub fn new(state: GlobalState, relay_tx: RelaySender) -> Self {
         Self {
             connections: vec![],
             max_rooms: 5, // in config later
@@ -41,16 +42,18 @@ impl ConnectionHandler {
     }
 
     pub fn join(&mut self, room: RoomId) {
+        if self.connections.len() >= self.max_rooms as usize {
+            self.error(ROOM_LIMIT_REACHED);
+            return;
+        }
+
         match self.state.subscribe(self.relay_tx.clone(), room) {
             Ok(handle) => {
                 self.connections.push((room, handle));
             }
 
             Err(_) => {
-                let _ = self
-                    .relay_tx
-                    .send(WebSocketMessage::Error(ROOM_DOESNT_EXIST));
-
+                self.error(ROOM_DOESNT_EXIST);
                 return;
             }
         }
@@ -71,7 +74,7 @@ impl ConnectionHandler {
         self.connections.iter().for_each(|handle| {
             handle.1.abort();
         });
-        dbg!("aborted all");
+
         self.connections.clear();
     }
 
@@ -82,7 +85,7 @@ impl ConnectionHandler {
 
 pub async fn handle_income(
     mut receiver: WebSocketReceiver,
-    relay_tx: UnboundedSender<WebSocketMessage>,
+    relay_tx: RelaySender,
     state: GlobalState,
 ) {
     let mut handler = ConnectionHandler::new(state, relay_tx.clone());

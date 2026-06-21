@@ -4,20 +4,14 @@ pub mod income;
 use std::sync::Arc;
 
 use crate::{
-    api::{
-        state::AppState,
-        ws::{
-            error::{NOT_A_UTF_8, ROOM_DOESNT_EXIST},
-            income::handle_income,
-        },
-    },
+    api::{state::AppState, ws::income::handle_income},
     requests::{Request, WebSocketMessage},
     room::room::RoomId,
 };
 use axum::{
     extract::{
         State, WebSocketUpgrade,
-        ws::{CloseCode, Message, WebSocket, close_code::INVALID},
+        ws::{Message, WebSocket},
     },
     response::IntoResponse,
 };
@@ -25,14 +19,7 @@ use futures::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
-use tokio::{
-    sync::{
-        self,
-        mpsc::{UnboundedReceiver, UnboundedSender},
-        watch,
-    },
-    task::JoinHandle,
-};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 type WebSocketSender = SplitSink<WebSocket, Message>;
 type WebSocketReceiver = SplitStream<WebSocket>;
