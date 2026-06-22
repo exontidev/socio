@@ -1,0 +1,6 @@
+[room]
+max_rooms = 5
+
+[network]
+port = 3000
+ip = "127.0.0.1"
