@@ -1,0 +1,53 @@
+@import url("https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+    --font-syne: "Syne", sans-serif;
+    --shadow-hard: 4px 4px 0px 0px #000;
+}
+
+/* остальные стили */
+
+/* Размеры элементов считаются вместе с padding и border */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* Базовые настройки страницы */
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+}
+
+body {
+    min-height: 100vh;
+    line-height: 1.5;
+    font-family: "Space Mono", monospace;
+    text-rendering: optimizeSpeed;
+    background-color: #ffffff;
+    background-image: repeating-conic-gradient(#eef2f3 0% 25%, #ffffff 0% 50%);
+    background-size: 48px 48px;
+}
+
+/* Картинки не выходят за пределы контейнера */
+img,
+picture {
+    max-width: 100%;
+    display: block;
+}
+
+/* Наследование шрифтов для форм */
+input,
+button,
+textarea,
+select {
+    font: inherit;
+}
+
+/* Убираем подчёркивание ссылок */
+a {
+    text-decoration: none;
+    color: inherit;
+}
