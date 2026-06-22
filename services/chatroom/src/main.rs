@@ -29,9 +29,6 @@ async fn main() -> anyhow::Result<()> {
     init_room("butter", state.clone());
     init_room("obama", state.clone());
     init_room("lsd", state.clone());
-    init_room("greedy capitasists", state.clone());
-    init_room("videogames", state.clone());
-    init_room("buffer overflow", state.clone());
 
     let listener = TcpListener::bind("127.0.0.1:3000")
         .await
@@ -60,15 +57,4 @@ fn init_room(name: &'static str, state: Arc<AppState>) {
     println!("id of room {} is {}", name, id);
 
     state.rooms.rooms.insert(RoomId(id), tx.clone());
-
-    tokio::spawn(async move {
-        loop {
-            let _ = tx.send(WebSocketMessage::NewMessage(Message {
-                user: UserId(Uuid::now_v7()),
-                content: format!("i love {}...", name),
-            }));
-
-            sleep(Duration::from_secs(1)).await;
-        }
-    });
 }

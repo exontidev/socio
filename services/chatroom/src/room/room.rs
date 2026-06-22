@@ -1,3 +1,4 @@
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -12,6 +13,7 @@ use uuid::Uuid;
     Serialize,
     Deserialize,
     Hash,
+    Display,
 )]
 pub struct RoomId(pub Uuid);
 

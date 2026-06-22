@@ -1,27 +1,20 @@
-use std::sync::Arc;
-
-use axum::extract::ws::{CloseCode, Message, close_code::INVALID};
-use futures::{SinkExt, StreamExt};
+use axum::extract::ws::Message as WsMessage;
+use futures::StreamExt;
 use tokio::{sync::mpsc::UnboundedSender, task::JoinHandle};
 
 use crate::{
-    api::{
-        state::AppState,
-        ws::{
-            WebSocketReceiver,
-            error::{
-                NOT_A_UTF_8, PARSE_FAILED, ROOM_DOESNT_EXIST,
-                ROOM_LIMIT_REACHED,
-            },
-        },
+    api::ws::{
+        RelaySender, WebSocketReceiver,
+        notifier::Notifier,
+        staus_codes::{NotifyCode, WebSocketError},
     },
     helper::GlobalState,
-    requests::{Request, WebSocketMessage},
-    room::room::RoomId,
+    requests::{Request, RequestId, UserAction, WebSocketMessage},
+    room::{message::Message, room::RoomId},
 };
 
 type Connections = Vec<(RoomId, JoinHandle<()>)>;
-type RelaySender = UnboundedSender<WebSocketMessage>;
+type Result = core::result::Result<NotifyCode, WebSocketError>;
 
 pub struct ConnectionHandler {
     pub connections: Connections,
@@ -35,31 +28,43 @@ impl ConnectionHandler {
     pub fn new(state: GlobalState, relay_tx: RelaySender) -> Self {
         Self {
             connections: vec![],
-            max_rooms: 5, // in config later
+            max_rooms: state.config.room.max_rooms,
             state,
             relay_tx,
         }
     }
 
-    pub fn join(&mut self, room: RoomId) {
-        if self.connections.len() >= self.max_rooms as usize {
-            self.error(ROOM_LIMIT_REACHED);
-            return;
-        }
+    pub fn handle(&mut self, action: UserAction) -> Result {
+        match action {
+            UserAction::JoinRoom { room } => self.join(room),
+            UserAction::LeaveRoom { room } => self.leave(room),
+            UserAction::LeaveAllRooms => self.leave_all(),
+            UserAction::SendMessage(message) => self.send(message),
 
-        match self.state.subscribe(self.relay_tx.clone(), room) {
-            Ok(handle) => {
-                self.connections.push((room, handle));
-            }
-
-            Err(_) => {
-                self.error(ROOM_DOESNT_EXIST);
-                return;
-            }
+            _ => Err(WebSocketError::ActionDoesNotExist),
         }
     }
 
-    pub fn leave(&mut self, room: RoomId) {
+    fn join(&mut self, room: RoomId) -> Result {
+        if self.connections.len() >= self.max_rooms as usize {
+            return Err(WebSocketError::RoomLimitReached);
+        }
+
+        match self.state.rooms.subscribe(self.relay_tx.clone(), room)
+        {
+            Ok(handle) => {
+                self.connections.push((room, handle));
+                Ok(NotifyCode::RoomJoined)
+            }
+
+            Err(_) => Err(WebSocketError::NoRoomFound),
+        }
+    }
+    fn leave(&mut self, room: RoomId) -> Result {
+        if self.connections.is_empty() {
+            return Err(WebSocketError::UserIsntInAnyRoom);
+        }
+
         self.connections.retain(|(id, handle)| {
             if *id == room {
                 handle.abort();
@@ -68,18 +73,37 @@ impl ConnectionHandler {
                 true
             }
         });
-    }
 
-    pub fn leave_all(&mut self) {
+        Ok(NotifyCode::RoomLeftGracefully)
+    }
+    fn leave_all(&mut self) -> Result {
+        if self.connections.is_empty() {
+            return Err(WebSocketError::UserIsntInAnyRoom);
+        }
+
         self.connections.iter().for_each(|handle| {
             handle.1.abort();
         });
 
         self.connections.clear();
-    }
 
-    pub fn error(&self, code: CloseCode) {
-        let _ = self.relay_tx.send(WebSocketMessage::Error(code));
+        Ok(NotifyCode::AllRoomsLeftGracefully)
+    }
+    fn send(&self, message: Message) -> Result {
+        let result = self.state.rooms.send(message);
+
+        match result {
+            Ok(_) => Ok(NotifyCode::MessageRequestSent),
+            Err(_) => Err(WebSocketError::RoomIsEmpty),
+        }
+    }
+}
+
+impl Drop for ConnectionHandler {
+    fn drop(&mut self) {
+        self.connections.iter().for_each(|(_, handle)| {
+            handle.abort();
+        });
     }
 }
 
@@ -89,6 +113,10 @@ pub async fn handle_income(
     state: GlobalState,
 ) {
     let mut handler = ConnectionHandler::new(state, relay_tx.clone());
+    let mut notifier = Notifier {
+        id: None,
+        tx: relay_tx.clone(),
+    };
 
     while let Some(result) = receiver.next().await {
         let message = match result {
@@ -97,40 +125,34 @@ pub async fn handle_income(
         };
 
         let text = match message {
-            Message::Text(utf8_bytes) => utf8_bytes.to_string(),
+            WsMessage::Text(utf8_bytes) => utf8_bytes.to_string(),
 
-            Message::Close(_) => {
+            WsMessage::Close(_) => {
                 continue;
             }
 
-            Message::Ping(_) | Message::Pong(_) => continue,
+            WsMessage::Ping(_) | WsMessage::Pong(_) => continue,
 
             _ => {
-                handler.error(NOT_A_UTF_8);
+                notifier.error(WebSocketError::NonUTF8Request);
                 continue;
             }
         };
 
-        let request = match serde_json::from_str::<Request>(&text) {
-            Ok(request) => request,
+        let (id, action) = match serde_json::from_str::<
+            Request<UserAction>,
+        >(&text)
+        {
+            Ok(Request { request, data }) => (request, data),
             Err(_) => {
-                handler.error(PARSE_FAILED);
+                notifier.error(WebSocketError::InvalidRequest);
                 continue;
             }
         };
 
-        match request {
-            Request::JoinRoom { room } => handler.join(room),
+        notifier.set_id(id);
 
-            Request::LeaveRoom { room } => handler.leave(room),
-
-            Request::LeaveAllRooms => {
-                handler.leave_all();
-            }
-
-            _ => (),
-        }
+        let result = handler.handle(action);
+        notifier.result(result);
     }
-
-    handler.leave_all();
 }

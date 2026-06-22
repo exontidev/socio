@@ -1,11 +1,12 @@
-pub mod error;
 pub mod income;
+pub mod notifier;
+pub mod staus_codes;
 
 use std::sync::Arc;
 
 use crate::{
     api::{state::AppState, ws::income::handle_income},
-    requests::{Request, WebSocketMessage},
+    requests::{UserAction, WebSocketMessage},
     room::room::RoomId,
 };
 use axum::{
@@ -19,7 +20,9 @@ use futures::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+
+type RelaySender = UnboundedSender<WebSocketMessage>;
 
 type WebSocketSender = SplitSink<WebSocket, Message>;
 type WebSocketReceiver = SplitStream<WebSocket>;
