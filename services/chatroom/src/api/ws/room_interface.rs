@@ -1,7 +1,7 @@
 use crate::{
     api::ws::{
-        RelaySender, WebSocketResult,
         status_codes::{NotifyCode, WebSocketError},
+        types::{RelaySender, WebSocketResult},
     },
     helper::GlobalState,
     room::{

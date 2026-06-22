@@ -4,7 +4,7 @@ use axum::{Router, routing::get};
 use chatroom::{
     api::{
         state::{AppState, Config},
-        ws::websocket_handler,
+        ws::entrypoint::websocket_handler,
     },
     room::{
         realtime_rooms::{RealtimeRoom, Rooms},

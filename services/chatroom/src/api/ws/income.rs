@@ -3,9 +3,11 @@ use futures::StreamExt;
 
 use crate::{
     api::ws::{
-        RelaySender, UserAction, WebSocketReceiver, WebSocketResult,
-        notifier::Notifier, requests::Request,
-        room_interface::RoomInterface, status_codes::WebSocketError,
+        io::{Request, UserAction},
+        notifier::Notifier,
+        room_interface::RoomInterface,
+        status_codes::WebSocketError,
+        types::{RelaySender, WebSocketReceiver, WebSocketResult},
     },
     helper::GlobalState,
 };
@@ -68,7 +70,5 @@ pub fn handle(
         UserAction::LeaveRoom { room } => rooms.leave(room),
         UserAction::LeaveAllRooms => rooms.leave_all(),
         UserAction::SendMessage(message) => rooms.send(message),
-
-        _ => Err(WebSocketError::ActionDoesNotExist),
     }
 }

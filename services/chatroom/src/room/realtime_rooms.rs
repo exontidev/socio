@@ -4,7 +4,7 @@ use dashmap::DashMap;
 use tokio::task::JoinHandle;
 
 use crate::{
-    api::ws::requests::WebSocketMessage,
+    api::ws::io::WebSocketMessage,
     room::{message::Message, room::RoomId},
 };
 

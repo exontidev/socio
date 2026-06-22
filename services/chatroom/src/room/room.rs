@@ -18,6 +18,6 @@ use uuid::Uuid;
 pub struct RoomId(pub Uuid);
 
 pub struct Room {
-    name: String,
-    description: String,
+    pub name: String,
+    pub description: String,
 }
