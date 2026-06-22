@@ -25,4 +25,5 @@ pub enum WebSocketError {
     UserIsntInAnyRoom = 4406,
     UserIsNotConnectedToGivenRoom = 4408,
     ActionDoesNotExist = 4407,
+    AlreadyConnectedToTheRoom = 4410,
 }

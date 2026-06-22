@@ -34,6 +34,12 @@ impl RoomInterface {
             return Err(WebSocketError::RoomLimitReached);
         }
 
+        let room = self.get_room(room_id);
+
+        if room.is_some() {
+            return Err(WebSocketError::AlreadyConnectedToTheRoom);
+        }
+
         match self.state.rooms.get(room_id) {
             Ok(room) => {
                 let joined = room.join(self.relay_tx.clone());
@@ -46,11 +52,7 @@ impl RoomInterface {
         }
     }
     pub fn send(&self, message: Message) -> WebSocketResult {
-        let room = self
-            .active_rooms
-            .iter()
-            .find(|(id, _)| *id == message.room)
-            .map(|(_, handle)| handle);
+        let room = self.get_room(message.room);
 
         let room = match room {
             Some(room) => room,
@@ -88,5 +90,12 @@ impl RoomInterface {
         }
 
         Ok(NotifyCode::RoomLeftGracefully)
+    }
+
+    fn get_room(&self, room_id: RoomId) -> Option<&RoomHandle> {
+        self.active_rooms
+            .iter()
+            .find(|(id, _)| *id == room_id)
+            .map(|(_, handle)| handle)
     }
 }
