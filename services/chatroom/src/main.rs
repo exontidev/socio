@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use axum::{Router, routing::get};
 use chatroom::{
@@ -6,12 +6,13 @@ use chatroom::{
         state::{AppState, Config},
         ws::websocket_handler,
     },
-    requests::WebSocketMessage,
-    room::{message::Message, room::RoomId, rooms::Rooms},
-    user::user::UserId,
+    room::{
+        realtime_rooms::{RealtimeRoom, Rooms},
+        room::RoomId,
+    },
 };
 use dashmap::DashMap;
-use tokio::{net::TcpListener, sync, time::sleep};
+use tokio::{net::TcpListener, sync};
 use uuid::Uuid;
 
 #[tokio::main]
@@ -56,5 +57,10 @@ fn init_room(name: &'static str, state: Arc<AppState>) {
     let id = Uuid::now_v7();
     println!("id of room {} is {}", name, id);
 
-    state.rooms.rooms.insert(RoomId(id), tx.clone());
+    state.rooms.rooms.insert(
+        RoomId(id),
+        RealtimeRoom {
+            event_broadcast: tx.clone(),
+        },
+    );
 }

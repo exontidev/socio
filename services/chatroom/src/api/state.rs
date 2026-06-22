@@ -1,14 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 
-use anyhow::anyhow;
-use serde::{Deserialize, Serialize};
-use tokio::{sync::broadcast, sync::mpsc, task::JoinHandle};
-
-use crate::{
-    requests::{UserAction, WebSocketMessage},
-    room::{room::RoomId, rooms::Rooms},
-    user::user::UserId,
-};
+use crate::room::realtime_rooms::Rooms;
 
 #[derive(Clone, Debug)]
 pub struct AppState {

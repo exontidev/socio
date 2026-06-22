@@ -1,13 +1,18 @@
 pub mod income;
 pub mod notifier;
-pub mod staus_codes;
+pub mod requests;
+pub mod room_interface;
+pub mod status_codes;
 
 use std::sync::Arc;
 
-use crate::{
-    api::{state::AppState, ws::income::handle_income},
-    requests::{UserAction, WebSocketMessage},
-    room::room::RoomId,
+use crate::api::{
+    state::AppState,
+    ws::{
+        income::handle_income,
+        requests::{UserAction, WebSocketMessage},
+        status_codes::{NotifyCode, WebSocketError},
+    },
 };
 use axum::{
     extract::{
@@ -22,10 +27,15 @@ use futures::{
 };
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
+type UserRelaySender = UnboundedSender<WebSocketMessage>;
+
 type RelaySender = UnboundedSender<WebSocketMessage>;
 
 type WebSocketSender = SplitSink<WebSocket, Message>;
 type WebSocketReceiver = SplitStream<WebSocket>;
+
+type WebSocketResult =
+    core::result::Result<NotifyCode, WebSocketError>;
 
 pub async fn websocket_handler(
     ws: WebSocketUpgrade,

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::{
-    api::ws::staus_codes::{NotifyCode, WebSocketError},
+    api::ws::status_codes::{NotifyCode, WebSocketError},
     room::{message::Message, room::RoomId},
     user::user::UserId,
 };

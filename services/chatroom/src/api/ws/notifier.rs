@@ -1,9 +1,7 @@
-use crate::{
-    api::ws::{
-        RelaySender,
-        staus_codes::{NotifyCode, WebSocketError},
-    },
+use crate::api::ws::{
+    RelaySender,
     requests::{RequestId, WebSocketMessage},
+    status_codes::{NotifyCode, WebSocketError},
 };
 
 pub struct Notifier {

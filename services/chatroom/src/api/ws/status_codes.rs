@@ -1,8 +1,7 @@
-pub const MESSAGE_RELAYED_SUCCESSFULLY: u16 = 4201;
-
 #[derive(
     Debug, Clone, Copy, serde::Serialize, serde::Deserialize,
 )]
+#[serde(rename_all = "snake_case", tag = "type", content = "data")]
 #[repr(u16)]
 pub enum NotifyCode {
     RoomJoined = 4200,
@@ -24,5 +23,6 @@ pub enum WebSocketError {
     NonUTF8Request = 4401,
     RoomIsEmpty = 4405,
     UserIsntInAnyRoom = 4406,
+    UserIsNotConnectedToGivenRoom = 4408,
     ActionDoesNotExist = 4407,
 }
