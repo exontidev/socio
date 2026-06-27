@@ -1,0 +1,3 @@
+[crypto]
+private = "/home/jaro/socio/private.pem"
+public = "/home/jaro/socio/public.pem"
