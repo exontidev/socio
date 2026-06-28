@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
     helper::Identifiable,
     state::Global,
-    token::claims::RefreshToken,
+    token::claims::{AccessToken, RefreshToken},
     users::{
         user::{User, WithHashedPassword, WithPlainPassword},
         user_storage::UserStorage,
@@ -16,24 +16,39 @@ use argon2::{
 use axum::{
     Json, extract::State, http::StatusCode, response::IntoResponse,
 };
+use axum_extra::extract::{CookieJar, cookie::Cookie};
 use chrono::{Duration, Utc};
 use uuid::Uuid;
 
+const REFRESH_TOKEN_COOKIE: &'static str = "refresh_token";
+const ACCESS_TOKEN_COOKIE: &'static str = "access_token";
+
 pub async fn handle_sign(
     State(global): State<Global>,
+    jar: CookieJar,
     Json(user): Json<User<WithPlainPassword>>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let user_storage = global.users.clone();
-
     let id = save_user(user_storage, user).await?;
 
-    let token =
+    let refresh_token =
         global.token_issuer.issue_refresh_token(RefreshToken {
             user_id: id,
             exp: (Utc::now() + Duration::days(7)).timestamp() as u64,
         });
 
-    Ok(token)
+    let access_token =
+        global.token_issuer.issue_access_token(AccessToken {
+            user_id: id,
+            exp: (Utc::now() + Duration::minutes(10)).timestamp()
+                as u64,
+        });
+
+    let updated_jar = jar
+        .add(Cookie::new(REFRESH_TOKEN_COOKIE, refresh_token))
+        .add(Cookie::new(ACCESS_TOKEN_COOKIE, access_token));
+
+    Ok((StatusCode::OK, updated_jar, "Sign-in success"))
 }
 
 async fn save_user(
