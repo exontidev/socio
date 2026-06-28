@@ -20,6 +20,7 @@ impl RawPublic {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     pub crypto: CryptoConfig,
+    pub tokens: TokenDuration,
     pub network: NetworkConfig,
 }
 
@@ -51,6 +52,15 @@ pub struct CryptoConfig {
 pub struct NetworkConfig {
     pub ip: IpAddr,
     pub port: u16,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct TokenDuration {
+    #[serde(with = "humantime_serde")]
+    pub access_token_duration: std::time::Duration,
+
+    #[serde(with = "humantime_serde")]
+    pub refresh_token_duration: std::time::Duration,
 }
 
 #[derive(Debug, thiserror::Error)]

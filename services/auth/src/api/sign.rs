@@ -1,9 +1,13 @@
 use std::sync::Arc;
 
 use crate::{
+    config::TokenDuration,
     helper::Identifiable,
     state::Global,
-    token::claims::{AccessToken, RefreshToken},
+    token::{
+        claims::{AccessToken, RefreshToken},
+        issuer::TokenIssuer,
+    },
     users::{
         user::{User, WithHashedPassword, WithPlainPassword},
         user_storage::UserStorage,
@@ -17,7 +21,7 @@ use axum::{
     Json, extract::State, http::StatusCode, response::IntoResponse,
 };
 use axum_extra::extract::{CookieJar, cookie::Cookie};
-use chrono::{Duration, Utc};
+use chrono::Utc;
 use uuid::Uuid;
 
 const REFRESH_TOKEN_COOKIE: &'static str = "refresh_token";
@@ -28,21 +32,39 @@ pub async fn handle_sign(
     jar: CookieJar,
     Json(user): Json<User<WithPlainPassword>>,
 ) -> Result<impl IntoResponse, StatusCode> {
+    let token_issuer = global.token_issuer.clone();
     let user_storage = global.users.clone();
+    let token_durations = &global.config.tokens;
+
     let id = save_user(user_storage, user).await?;
+    let cookies =
+        issue_tokens(token_issuer, jar, id, token_durations).await;
+
+    Ok((StatusCode::OK, cookies, "Sign-in success"))
+}
+
+async fn issue_tokens(
+    token_issuer: Arc<TokenIssuer>,
+    jar: CookieJar,
+    id: Uuid,
+    durations: &TokenDuration,
+) -> CookieJar {
+    let refresh_duration =
+        chrono::Duration::from_std(durations.refresh_token_duration)
+            .expect("refresh_token_duration out of chrono range");
+    let access_duration =
+        chrono::Duration::from_std(durations.access_token_duration)
+            .expect("access_token_duration out of chrono range");
 
     let refresh_token =
-        global.token_issuer.issue_refresh_token(RefreshToken {
+        token_issuer.issue_refresh_token(RefreshToken {
             user_id: id,
-            exp: (Utc::now() + Duration::days(7)).timestamp() as u64,
+            exp: (Utc::now() + refresh_duration).timestamp() as u64,
         });
-
-    let access_token =
-        global.token_issuer.issue_access_token(AccessToken {
-            user_id: id,
-            exp: (Utc::now() + Duration::minutes(10)).timestamp()
-                as u64,
-        });
+    let access_token = token_issuer.issue_access_token(AccessToken {
+        user_id: id,
+        exp: (Utc::now() + access_duration).timestamp() as u64,
+    });
 
     let updated_jar = jar
         .add(
@@ -54,7 +76,7 @@ pub async fn handle_sign(
                 .http_only(true),
         );
 
-    Ok((StatusCode::OK, updated_jar, "Sign-in success"))
+    updated_jar
 }
 
 async fn save_user(
