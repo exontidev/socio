@@ -15,7 +15,7 @@ pub enum Query {
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[async_trait::async_trait]
-pub trait UserStorage {
+pub trait UserStorage: Sync + Send {
     async fn add(
         &self,
         user: Identifiable<User<WithHashedPassword>>,
@@ -24,7 +24,7 @@ pub trait UserStorage {
     async fn get<Visibility>(
         &self,
         query: Query,
-    ) -> Result<User<Visibility>>
+    ) -> Result<Identifiable<User<Visibility>>>
     where
         User<Visibility>: From<User<WithHashedPassword>>;
 
@@ -37,4 +37,7 @@ pub enum Error {
     UserNotFoundById(Uuid),
     #[error("User {0} not found")]
     UserNotFoundByName(String),
+
+    #[error("User with name {0} already exists")]
+    UserAlreadyExistsWithName(String),
 }

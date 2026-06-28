@@ -1,3 +1,7 @@
 [crypto]
 private = "/home/jaro/socio/private.pem"
 public = "/home/jaro/socio/public.pem"
+
+[network]
+port = 3000
+ip = "127.0.0.1"

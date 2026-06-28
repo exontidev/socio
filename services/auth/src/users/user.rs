@@ -1,18 +1,22 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(
+    Debug, serde::Serialize, serde::Deserialize, Clone, Copy,
+)]
 pub struct WithoutPassword;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct WithPlainPassword {
-    pub plain: String,
+    pub password: String,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct WithHashedPassword {
     pub hash: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct User<Secret> {
     pub username: String,
+
+    #[serde(flatten)]
     pub secret: Secret,
 }
 

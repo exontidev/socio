@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{net::IpAddr, path::PathBuf};
 
 type Result<T> = core::result::Result<T, Error>;
 
@@ -20,6 +20,7 @@ impl RawPublic {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     pub crypto: CryptoConfig,
+    pub network: NetworkConfig,
 }
 
 impl Config {
@@ -44,6 +45,12 @@ impl Config {
 pub struct CryptoConfig {
     pub private: PathBuf,
     pub public: PathBuf,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct NetworkConfig {
+    pub ip: IpAddr,
+    pub port: u16,
 }
 
 #[derive(Debug, thiserror::Error)]
