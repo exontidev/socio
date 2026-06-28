@@ -45,8 +45,14 @@ pub async fn handle_sign(
         });
 
     let updated_jar = jar
-        .add(Cookie::new(REFRESH_TOKEN_COOKIE, refresh_token))
-        .add(Cookie::new(ACCESS_TOKEN_COOKIE, access_token));
+        .add(
+            Cookie::build((REFRESH_TOKEN_COOKIE, refresh_token))
+                .http_only(true),
+        )
+        .add(
+            Cookie::build((ACCESS_TOKEN_COOKIE, access_token))
+                .http_only(true),
+        );
 
     Ok((StatusCode::OK, updated_jar, "Sign-in success"))
 }
