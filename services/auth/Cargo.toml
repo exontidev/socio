@@ -15,6 +15,7 @@ jsonwebtoken = { version = "10.4.0", features = ["ed25519-dalek", "rust_crypto"]
 serde = { version = "1.0.228", features = ["serde_derive"] }
 serde_json = "1.0.150"
 thiserror = "2.0.18"
+time = "=0.3.36"
 tokio = { version = "1.52.3", features = ["full"] }
 toml = "1.1.2"
 uuid = { version = "1.23.4", features = ["v7", "serde"] }

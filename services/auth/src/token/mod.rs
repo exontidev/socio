@@ -25,7 +25,7 @@ pub mod claims;
 pub mod issuer;
 pub mod verifier;
 
-pub async fn issue_tokens(
+pub fn append_tokens(
     token_issuer: Arc<TokenIssuer>,
     jar: CookieJar,
     id: Uuid,
@@ -54,16 +54,18 @@ pub fn append_access_token(
     id: Uuid,
     jar: CookieJar,
 ) -> CookieJar {
-    let refresh_token =
-        token_issuer.issue_access_token(AccessToken {
-            access_token: AccessTokenInternals { user_id: id },
-            exp: (Utc::now() + access_duration).timestamp() as u64,
-        });
-
+    let access_token = token_issuer.issue_access_token(AccessToken {
+        access_token: AccessTokenInternals { user_id: id },
+        exp: (Utc::now() + access_duration).timestamp() as u64,
+    });
     let updated_jar = jar.add(
-        Cookie::build((ACCESS_TOKEN_COOKIE, refresh_token))
+        Cookie::build((ACCESS_TOKEN_COOKIE, access_token))
             .http_only(true)
-            .same_site(SameSite::Strict),
+            .same_site(SameSite::Strict)
+            .max_age(time::Duration::seconds(
+                access_duration.num_seconds(),
+            ))
+            .build(),
     );
 
     updated_jar
@@ -84,7 +86,10 @@ pub fn append_refresh_token(
     let updated_jar = jar.add(
         Cookie::build((REFRESH_TOKEN_COOKIE, refresh_token))
             .http_only(true)
-            .same_site(SameSite::Strict),
+            .same_site(SameSite::Strict)
+            .max_age(time::Duration::seconds(
+                refresh_duration.num_seconds(),
+            )),
     );
 
     updated_jar

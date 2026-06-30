@@ -5,12 +5,12 @@ use crate::{
     helper::Identifiable,
     state::Global,
     token::{
+        append_tokens,
         claims::{
             ACCESS_TOKEN_COOKIE, AccessToken, AccessTokenInternals,
             REFRESH_TOKEN_COOKIE, RefreshToken,
             RefreshTokenInternals,
         },
-        issue_tokens,
         issuer::TokenIssuer,
     },
     users::{
@@ -44,9 +44,9 @@ pub async fn handle_register(
 
     let id = save_user(user_storage, user).await?;
     let cookies =
-        issue_tokens(token_issuer, jar, id, token_durations).await;
+        append_tokens(token_issuer, jar, id, token_durations);
 
-    Ok((StatusCode::OK, cookies, "Sign-in success"))
+    Ok((StatusCode::NO_CONTENT, cookies))
 }
 
 async fn save_user(

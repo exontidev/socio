@@ -8,7 +8,7 @@ use axum_extra::extract::CookieJar;
 
 use crate::{
     state::Global,
-    token::issue_tokens,
+    token::append_tokens,
     users::{
         user::{User, WithHashedPassword, WithPlainPassword},
         user_storage::{Query, UserStorage},
@@ -46,16 +46,15 @@ pub async fn handle_login(
         )
         .is_ok();
 
-    let jar = issue_tokens(
+    let jar = append_tokens(
         token_issuer,
         jar,
         matching_user.uuid,
         token_durations,
-    )
-    .await;
+    );
 
     match verified {
-        true => Ok((StatusCode::OK, jar, "Login successful")),
+        true => Ok((StatusCode::NO_CONTENT, jar)),
         false => Err(StatusCode::UNAUTHORIZED),
     }
 }

@@ -5,12 +5,13 @@ use axum::{
     Json, extract::State, http::StatusCode, response::IntoResponse,
 };
 use axum_extra::extract::CookieJar;
+use serde_json::json;
 
 use crate::{
     state::Global,
     token::{
-        append_access_token, claims::REFRESH_TOKEN_COOKIE,
-        issue_tokens,
+        append_access_token, append_tokens,
+        claims::REFRESH_TOKEN_COOKIE,
     },
     users::{
         user::{User, WithHashedPassword, WithPlainPassword},
@@ -34,20 +35,15 @@ pub async fn handle_refresh(
     let refresh_token = refresh_token_row.value();
     let jwt = token_verifier.verify_refresh_token(refresh_token);
 
-    let access_duration = chrono::Duration::from_std(
-        token_durations.access_token_duration,
-    )
-    .expect("access_token_duration out of chrono range");
-
     let jar = match jwt {
-        Ok(jwt) => append_access_token(
+        Ok(jwt) => append_tokens(
             token_issuer,
-            access_duration,
-            jwt.claims.refresh_token.user_id,
             jar,
+            jwt.claims.refresh_token.user_id,
+            token_durations,
         ),
         Err(_) => return Err(StatusCode::UNAUTHORIZED),
     };
 
-    Ok((StatusCode::OK, jar, "New access token issued"))
+    Ok((StatusCode::NO_CONTENT, jar))
 }
