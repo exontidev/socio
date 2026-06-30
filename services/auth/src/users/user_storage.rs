@@ -2,9 +2,7 @@ use uuid::Uuid;
 
 use crate::{
     helper::Identifiable,
-    users::user::{
-        User, WithHashedPassword, WithPlainPassword, WithoutPassword,
-    },
+    users::user::{User, WithHashedPassword},
 };
 
 pub enum Query {
