@@ -1,9 +1,12 @@
-import { useState } from "react";
 import "./style.css";
+import Header from "./components/Chat/Header.tsx";
+import Input from "./components/Chat/Input.tsx";
+
 function App() {
   return (
     <>
-      <h3>саня делай чат</h3>
+      <Header />
+      <Input />
     </>
   );
 }
