@@ -4,3 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+argon2 = "0.5.3"
+async-trait = "0.1.89"
+axum = { version = "0.8.9", features = ["macros"] }
+axum-extra = { version = "0.12", features = ["cookie"] }
+axum-limit = "0.1.0-alpha.2"
+chrono = { version = "0.4.45", features = ["serde"] }
+humantime-serde = "1.1.1"
+jsonwebtoken = { version = "10.4.0", features = ["ed25519-dalek", "rust_crypto"] }
+serde = { version = "1.0.228", features = ["serde_derive"] }
+serde_json = "1.0.150"
+thiserror = "2.0.18"
+time = "=0.3.36"
+tokio = { version = "1.52.3", features = ["full"] }
+toml = "1.1.2"
+uuid = { version = "1.23.4", features = ["v7", "serde"] }
+zeroize = "1.9.0"
